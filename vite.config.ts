@@ -2,8 +2,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
-import wasm from 'vite-plugin-wasm'
-import topLevelAwait from 'vite-plugin-top-level-await'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import manifest from './manifest.json'
 
@@ -11,16 +9,12 @@ import manifest from './manifest.json'
 export default defineConfig({
   plugins: [
     nodePolyfills(),
-    wasm(),
-    topLevelAwait(),
     react(),
     crx({ manifest }),
   ],
   worker: {
     plugins: () => [
       nodePolyfills(),
-      wasm(),
-      topLevelAwait(),
     ],
   },
   server: {

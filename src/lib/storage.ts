@@ -55,3 +55,43 @@ export async function hasWallet(): Promise<boolean> {
   });
 }
 
+const NETWORK_STORAGE_KEY = 'network';
+
+/**
+ * Saves the selected network to chrome.storage.local.
+ * @param network - The network to save ('signet' or 'mainnet')
+ * @returns Promise that resolves when data is saved
+ */
+export async function saveNetwork(network: 'signet' | 'mainnet'): Promise<void> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ [NETWORK_STORAGE_KEY]: network }, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
+/**
+ * Loads the selected network from chrome.storage.local.
+ * @returns Promise that resolves with the network ('signet' or 'mainnet'), defaults to 'signet'
+ */
+export async function loadNetwork(): Promise<'signet' | 'mainnet'> {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get([NETWORK_STORAGE_KEY], (result: { [key: string]: unknown }) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+      } else {
+        const network = result[NETWORK_STORAGE_KEY];
+        if (network === 'signet' || network === 'mainnet') {
+          resolve(network);
+        } else {
+          resolve('signet'); // Default to signet
+        }
+      }
+    });
+  });
+}
+

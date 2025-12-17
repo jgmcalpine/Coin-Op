@@ -20,7 +20,10 @@ export type Message =
   | { type: 'GenerateWallet'; payload: { password: string } }
   | { type: 'GetWalletStatus' }
   | { type: 'UnlockWallet'; payload: { password: string } }
-  | { type: 'LockWallet' };
+  | { type: 'LockWallet' }
+  | { type: 'GetBalance' }
+  | { type: 'GetNetwork' }
+  | { type: 'SetNetwork'; payload: { network: 'signet' | 'mainnet' } };
 
 /**
  * Response types for each message handler.
@@ -39,6 +42,19 @@ export interface UnlockWalletResponse {
 }
 
 export interface LockWalletResponse {
+  success: true;
+}
+
+export interface GetBalanceResponse {
+  onchain: number;
+  offchain: number;
+}
+
+export interface GetNetworkResponse {
+  network: 'signet' | 'mainnet';
+}
+
+export interface SetNetworkResponse {
   success: true;
 }
 

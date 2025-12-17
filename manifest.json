@@ -5,6 +5,11 @@
   "permissions": [
     "storage"
   ],
+  "host_permissions": [
+    "https://*.arklabs.to/*",
+    "https://ark.signet.2nd.dev/*",
+    "<all_urls>"
+  ],
   "action": {
     "default_popup": "index.html"
   },
@@ -12,7 +17,7 @@
     "service_worker": "src/background/index.ts"
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    "extension_pages": "script-src 'self'; object-src 'self';"
   }
 }
 

@@ -11,6 +11,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@arklabs/wallet-sdk": "^0.0.15",
     "@types/bip39": "^2.4.2",
     "bip39": "^3.1.0",
     "react": "^19.2.0",
@@ -38,8 +39,6 @@
     "typescript-eslint": "^8.46.4",
     "vite": "^7.2.4",
     "vite-plugin-node-polyfills": "^0.24.0",
-    "vite-plugin-top-level-await": "^1.6.0",
-    "vite-plugin-wasm": "^3.5.0",
     "vitest": "^4.0.16"
   }
 }
