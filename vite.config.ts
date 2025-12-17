@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
 import wasm from 'vite-plugin-wasm'
@@ -30,5 +31,10 @@ export default defineConfig({
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
+  },
+  test: {
+    environment: 'happy-dom',
+    globals: true,
+    setupFiles: './src/test/setup.ts',
   },
 })
