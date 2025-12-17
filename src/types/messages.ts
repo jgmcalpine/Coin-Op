@@ -19,7 +19,8 @@ export interface Response<T> {
 export type Message =
   | { type: 'GenerateWallet'; payload: { password: string } }
   | { type: 'GetWalletStatus' }
-  | { type: 'UnlockWallet'; payload: { password: string } };
+  | { type: 'UnlockWallet'; payload: { password: string } }
+  | { type: 'LockWallet' };
 
 /**
  * Response types for each message handler.
@@ -34,6 +35,10 @@ export interface GetWalletStatusResponse {
 }
 
 export interface UnlockWalletResponse {
+  success: true;
+}
+
+export interface LockWalletResponse {
   success: true;
 }
 

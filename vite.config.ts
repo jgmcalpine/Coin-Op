@@ -4,11 +4,13 @@ import react from '@vitejs/plugin-react'
 import { crx } from '@crxjs/vite-plugin'
 import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import manifest from './manifest.json'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    nodePolyfills(),
     wasm(),
     topLevelAwait(),
     react(),
@@ -16,6 +18,7 @@ export default defineConfig({
   ],
   worker: {
     plugins: () => [
+      nodePolyfills(),
       wasm(),
       topLevelAwait(),
     ],
