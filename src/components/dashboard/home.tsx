@@ -47,17 +47,6 @@ function Dashboard({ onLock }: DashboardProps) {
     }
   };
 
-  const fetchAddresses = async () => {
-    try {
-      const response = await sendMessage<GetAddressesResponse>({ type: 'GetAddresses' });
-      if (response.success && response.data) {
-        setAddresses({ onchain: response.data.onchain });
-      }
-    } catch (error) {
-      console.error('Failed to fetch addresses:', error);
-    }
-  };
-
   const handleOnboard = async () => {
     console.log("Clicked Lift. Balance:", balances?.onchain);
     if (!balances || balances.onchain <= 500) {
