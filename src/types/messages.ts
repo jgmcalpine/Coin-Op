@@ -23,7 +23,9 @@ export type Message =
   | { type: 'LockWallet' }
   | { type: 'GetBalance' }
   | { type: 'GetNetwork' }
-  | { type: 'SetNetwork'; payload: { network: 'signet' | 'mainnet' } };
+  | { type: 'SetNetwork'; payload: { network: 'signet' | 'mainnet' } }
+  | { type: 'GetAddresses' }
+  | { type: 'Onboard'; payload: { amount: number } };
 
 /**
  * Response types for each message handler.
@@ -56,5 +58,15 @@ export interface GetNetworkResponse {
 
 export interface SetNetworkResponse {
   success: true;
+}
+
+export interface GetAddressesResponse {
+  onchain: string;
+  offchain: string;
+}
+
+export interface OnboardResponse {
+  success: true;
+  txid: string;
 }
 

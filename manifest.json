@@ -6,8 +6,9 @@
     "storage"
   ],
   "host_permissions": [
-    "https://*.arklabs.to/*",
-    "https://ark.signet.2nd.dev/*",
+    "https://mutinynet.arkade.sh/*",
+    "https://asp.arklabs.to/*",
+    "https://blockstream.info/*",
     "<all_urls>"
   ],
   "action": {

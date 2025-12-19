@@ -24,19 +24,24 @@ let walletInstance: Wallet | null = null;
 
 /**
  * ASP URLs for different networks.
- * TODO: Find a live Ark ASP. 'master.mutinynet.arklabs.to' is down.
  */
 const ASP_URLS = {
-  signet: 'https://ark.signet.2nd.dev/api/v1', // Fallback - may fail protocol checks
+  signet: 'https://mutinynet.arkade.sh',
   mainnet: 'https://asp.arklabs.to',
 } as const;
+
+/**
+ * Arkade Mutinynet ASP Public Key.
+ * Required for boarding address generation.
+ */
+const ARKADE_PUBKEY = "03fa73c6e4876ffb2dfc961d763cca9abc73d4b88efcb8f5e7ff92dc55e9aa553d";
 
 /**
  * Maps our network names to SDK network names.
  * SDK uses 'mutinynet' for testing and 'bitcoin' for mainnet.
  */
 const SDK_NETWORK_MAP: Record<'signet' | 'mainnet', 'mutinynet' | 'bitcoin'> = {
-  signet: 'mutinynet', // Use 'mutinynet' for the SDK network
+  signet: 'mutinynet',
   mainnet: 'bitcoin',
 } as const;
 
@@ -78,34 +83,39 @@ async function initSdk(mnemonic: string, network: 'signet' | 'mainnet'): Promise
     
     console.log('[Network] SDK Network:', sdkNetwork);
     
-    // Try creating wallet with SDK defaults first (no arkServerUrl)
-    // The SDK may have built-in default providers for mutinynet
-    try {
-      console.log('[Network] Attempting wallet creation with SDK defaults (no arkServerUrl)...');
+    // Use SDK defaults for mutinynet (signet), explicit URLs for mainnet
+    if (network === 'signet') {
+      // Use SDK defaults for mutinynet with Arkade public key for boarding address
+      console.log('[Network] Using SDK defaults for Mutinynet with Arkade PubKey');
       walletInstance = await Wallet.create({
         network: sdkNetwork,
         identity: key,
-        // Note: If esploraUrl is required, use: esploraUrl: 'https://mutinynet.com/api'
+        arkServerPublicKey: ARKADE_PUBKEY, // The Fix: Required for boarding address
+        boardingTimelock: { type: "blocks", value: BigInt(144) }, // ~24 hours
+        exitTimelock: { type: "blocks", value: BigInt(144) },
       });
-      console.log("[Wallet] Onchain Address:", walletInstance.onchainAddress);
-// console.log("[Wallet] Offchain Address:", walletInstance.offchainAddress);
-      console.log('[Network] Wallet created successfully with SDK defaults');
-    } catch (defaultError) {
-      console.warn('[Network] SDK defaults failed, trying with explicit arkServerUrl:', defaultError);
-      
-      // Fallback: Use explicit ASP URL if SDK defaults don't work
+      console.log("[Ark SDK] Initialized using Defaults for Mutinynet");
+    } else {
+      // Mainnet: use explicit URLs
       const aspUrl = ASP_URLS[network];
       console.log('[Network] Attempting connection to:', aspUrl);
-      
       walletInstance = await Wallet.create({
         network: sdkNetwork,
         identity: key,
         arkServerUrl: aspUrl,
+        esploraUrl: 'https://blockstream.info/api', // Use reliable explorer
+        boardingTimelock: { type: "blocks", value: BigInt(144) }, // ~24 hours
+        exitTimelock: { type: "blocks", value: BigInt(144) },
       });
-      
-      console.log(`[Network] Wallet created with explicit ASP URL: ${aspUrl}`);
+      console.log(`[Network] Wallet created with ASP URL: ${aspUrl}`);
     }
     
+    console.log("[Wallet] Onchain Address:", walletInstance.onchainAddress);
+    try {
+      console.log("[Wallet] Boarding Address:", walletInstance.boardingOnchainAddress);
+    } catch (e) {
+      console.error("[Wallet] Boarding Address not available:", e);
+    }
     console.log(`SDK initialized with network: ${network}`);
   } catch (error) {
     console.error('Failed to initialize SDK:', error);
@@ -328,6 +338,131 @@ async function handleSetNetwork(
 }
 
 /**
+ * Handles GetAddresses message.
+ * Returns the onchain and offchain addresses from the wallet instance.
+ */
+async function handleGetAddresses(): Promise<Response<{ onchain: string; offchain: string }>> {
+  try {
+    if (!walletInstance) {
+      return {
+        success: false,
+        error: 'Wallet not initialized',
+      };
+    }
+
+    // Safely retrieve addresses - don't chain them, wrap each in try/catch
+    let onchain = "";
+    let offchain = "";
+    
+    try {
+      onchain = walletInstance.onchainAddress;
+    } catch (e) {
+      console.warn("No onchain addr", e);
+    }
+    
+    try {
+      offchain = walletInstance.offchainAddress?.toString() || "";
+    } catch (e) {
+      console.warn("No offchain addr", e);
+    }
+
+    return {
+      success: true,
+      data: { onchain, offchain },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get addresses',
+    };
+  }
+}
+
+/**
+ * Handles Onboard message.
+ * Converts L1 funds to L2 (Ark) by sending Bitcoin to the boarding onchain address.
+ */
+async function handleOnboard(
+  payload: { amount: number }
+): Promise<Response<{ success: true; txid: string }>> {
+  try {
+    if (!walletInstance) {
+      return {
+        success: false,
+        error: 'Wallet not initialized',
+      };
+    }
+
+    // Get the boarding onchain address for L1->L2 conversion
+    const boardingAddr = walletInstance.boardingOnchainAddress;
+    
+    if (!boardingAddr) {
+      return {
+        success: false,
+        error: 'Boarding address not available',
+      };
+    }
+
+    // Send Bitcoin to the boarding address to convert L1 -> L2
+    // Try BigInt first as Rust-based WASM SDKs typically use BigInt for amounts
+    // Use type assertion to allow BigInt (SDK may accept it even if types say number)
+    const txid = await (walletInstance.sendBitcoin as (params: { address: string; amount: bigint | number }) => Promise<string>)({
+      address: boardingAddr,
+      amount: BigInt(payload.amount),
+    });
+
+    console.log(`[Ark SDK] Lift tx broadcast: ${txid}`);
+    
+    return {
+      success: true,
+      data: {
+        success: true,
+        txid: typeof txid === 'string' ? txid : String(txid),
+      },
+    };
+  } catch (error) {
+    // If BigInt fails, try with number (some SDKs may accept number)
+    if (error instanceof Error) {
+      try {
+        if (!walletInstance) {
+          throw new Error('Wallet not initialized');
+        }
+        
+        const boardingAddr = walletInstance.boardingOnchainAddress;
+        if (!boardingAddr) {
+          throw new Error('Boarding address not available');
+        }
+
+        const txid = await walletInstance.sendBitcoin({
+          address: boardingAddr,
+          amount: payload.amount,
+        });
+
+        console.log(`[Ark SDK] Lift tx broadcast: ${txid}`);
+        
+        return {
+          success: true,
+          data: {
+            success: true,
+            txid: typeof txid === 'string' ? txid : String(txid),
+          },
+        };
+      } catch (retryError) {
+        return {
+          success: false,
+          error: retryError instanceof Error ? retryError.message : 'Failed to onboard funds',
+        };
+      }
+    }
+    
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to onboard funds',
+    };
+  }
+}
+
+/**
  * Main message listener for the background service worker.
  * Routes messages based on their type and returns typed responses.
  * 
@@ -371,6 +506,14 @@ chrome.runtime.onMessage.addListener(
 
         case 'SetNetwork':
           response = await handleSetNetwork(message.payload);
+          break;
+
+        case 'GetAddresses':
+          response = await handleGetAddresses();
+          break;
+
+        case 'Onboard':
+          response = await handleOnboard(message.payload);
           break;
 
         default: {
